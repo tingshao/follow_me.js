@@ -26,7 +26,7 @@
          -moz-border-radius: 8px;
               border-radius: 8px;
     }
-    #color-canvas, #color-2d-overlay {
+    #color-canvas, #video-vpx, #color-2d-overlay {
       position: absolute;
       top: 0;
       right: 0;
@@ -36,8 +36,11 @@
     #color-canvas{
       z-index: 0;
     }
-    #color-2d-overlay {
+    #video-vpx{
       z-index: 1;
+    }    
+    #color-2d-overlay {
+      z-index: 2;
     }
     .top-space {
       margin-top: 80px;
@@ -47,17 +50,22 @@
     <div class="container">
   <div class="row">
     <div class="col-xs-12 top-space"></div>
-    <div class="col-xs-12">
-      <canvas id="color-canvas" width=320; height=240></canvas>
-          <canvas id="color-2d-overlay" width=320; height=240></canvas>  
-    </div>
-    <div class="col-xs-12 top-space"></div>
-    <div class="col-xs-12 top-space"></div>
-    <div class="col-xs-12 top-space"></div>
-    <div class="col-xs-12 top-space"></div>
     <div class="col-xs-12 text-center">
       <button id="followButton" type="button" class="btn btn-success btn-xlg">FOLLOW ME</button>
     </div>
+    <div class="col-xs-12 text-center" id='info'>Info</div>
+    <div class="col-xs-12 top-space"></div>
+    <div class="col-xs-12">
+<!--      <canvas id="color-canvas" width=320; height=240></canvas>
+          <canvas id="color-2d-overlay" width=320; height=240></canvas>   -->
+      <canvas id="color-canvas" width=640; height=480></canvas>
+      <video id="video-vpx" controls></video>
+      <canvas id="color-2d-overlay" width=628; height=468></canvas>  
+    </div>
+<!--     <div class="col-xs-12 top-space"></div>
+    <div class="col-xs-12 top-space"></div>
+    <div class="col-xs-12 top-space"></div>
+    <div class="col-xs-12 top-space"></div> -->
   </div>
   <div class="invisible ">
     <div class="columns">

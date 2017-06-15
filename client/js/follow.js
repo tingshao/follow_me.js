@@ -17,24 +17,24 @@ button.click(function() {
     body: following
   };
 
-  ws.send(JSON.stringify(msg));
+  transporter.sendMessage(msg);
 });
 
-var ws = null;
-var connected = false;
+// var ws = null;
+// var connected = false;
 
-function connectWs() {
-  ws = new WebSocket("ws://"+location.host);
-  ws.onclose = () => {
-    console.log('ws onopen');
-  };
-  ws.onopen = () => {
-    console.log('ws onopen');
-    connected = true;
-  };
-  ws.onmessage = (message) => {
-    console.log('ws onmessage')
-  };
-}
+// function connectWs() {
+//   ws = new WebSocket("ws://"+location.host);
+//   ws.onclose = () => {
+//     console.log('ws onopen');
+//   };
+//   ws.onopen = () => {
+//     console.log('ws onopen');
+//     connected = true;
+//   };
+//   ws.onmessage = (message) => {
+// //    console.log('ws onmessage')
+//   };
+// }
 
-connectWs();
+// connectWs();

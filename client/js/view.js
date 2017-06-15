@@ -105,13 +105,37 @@ transporter.onEvent = (event, msg) => {
 };
 
 let rgb_view = new BufferViewer();
-rgb_view.init(document.querySelector('#color-canvas'));
+let info = document.querySelector('#info');
+let video = document.querySelector('#video-vpx');
+let color_canvas = document.querySelector('#color-canvas');
+video.style.visibility = "hidden";
+video.addEventListener('play', () => {
+    console.log('--------- play event triggered');
+    transporter.sendMessage({
+        type: 'play'
+    });
+} );
+rgb_view.init(color_canvas);
 let rgbRenderCall = rgb_view.render.bind(rgb_view);
 
 this.prevX=0.0;
 this.prevY=0.0;
 this.prevZ=0.0;
 this.prevOrientation="";
+
+function MakeVideoVisible(visible) {
+    if (visible) {
+        if (video.style.visibility != "visible") {
+            video.style.visibility = "visible";
+            color_canvas.style.visibility = "hidden";
+        }
+    } else {
+        if (video.style.visibility != "hidden") {
+            video.style.visibility = "hidden";
+            color_canvas.style.visibility = "visible";
+        }
+    }
+}
 
 // view.html sets scaleFactor to 2, index.html uses 1.
 var scaleFactor;
@@ -318,8 +342,73 @@ transporter.onClearData = (timestamp) => {
 };
 
 transporter.onColorFrame = (width, height, data) => {
+    MakeVideoVisible(false);
     rgb_view.updateBuffer(data, width, height, THREE.RGBFormat);
     requestAnimationFrame(rgbRenderCall);
+};
+let ms = null;
+let sourceBuffer = null;
+let videoFrameStore = [];
+// let connected = false;
+function setupMediaSource() {
+  const mimeType = 'video/webm; codecs="vp8"';
+  if (!MediaSource.isTypeSupported(mimeType)) {
+    console.error(`mimetype: vp8 is not supported.`);
+    return;
+  }
+
+  ms = new MediaSource();
+  video.src = window.URL.createObjectURL(ms);
+
+  ms.addEventListener('sourceopen', (e) => {
+    sourceBuffer = ms.addSourceBuffer(mimeType);
+    transporter.open();
+    // console.log('---- connect to ', location.host);
+    // let ws = new WebSocket('ws://'+location.host);
+    // ws.binaryType = 'arraybuffer';
+    // ws.onmessage = function(event) {
+    //   if (event.data instanceof ArrayBuffer)
+    //     feedData(event.data);
+    //   else
+    //     handleStringMsg(event);
+    // };
+  });
+  ms.addEventListener('sourceended', (e) => {
+    ms.endOfStream();
+    video.play();
+  });
+}
+
+setupMediaSource();
+
+transporter.onVPXVideoFrame = (width, height, data) => {
+    MakeVideoVisible(true);
+    // if (!ms)
+    //     setupMediaSource();
+    // if sourceBuffer has not been initialized, buffer the frame.
+    // if it has been initialzed, consume all data stored in buffer and then the
+    // new comming data
+    if (sourceBuffer) {
+        if (sourceBuffer.updating) {
+            console.log('--- SourceBuffer updating, losing frame');                    
+        } else {
+            if (videoFrameStore.length) {
+                videoFrameStore.forEach((olddata, i, array) => {
+                    sourceBuffer.appendBuffer(new Uint8Array(olddata));
+                });
+            }
+            sourceBuffer.appendBuffer(data);
+            console.log('---consumed vpx data', data);
+            videoFrameStore = [];
+        }
+    } else {
+        console.log('--- store vpx data');
+        videoFrameStore.push(data);
+    }
+};
+
+transporter.onInfoUpdate = (text) => {
+  info.textContent = (video.style.visibility==="visible"?' VPX ':'') + text;
 };
 
 function insertDataInTableRows(data) {
@@ -366,6 +455,6 @@ function getCurrentTime(date) {
     return(h + ":" + m + ":" + s + ":" + ms);
 }
 
-setTimeout(function() {
-    transporter.open();
-}, 100);
+// setTimeout(function() {
+//    transporter.open();
+// }, 100);

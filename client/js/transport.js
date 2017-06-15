@@ -3,7 +3,9 @@
 /**
  * @param {string} websocketUrl - endpoint to connect e.g. 'ws://foo:8080/'
  */
+let transport_inst;
 function SpTransport(websocketUrl) {
+    transport_inst = this;
     this._url = websocketUrl;
     this.onOpen = () => {};
     this.onClose = () => {};
@@ -12,6 +14,7 @@ function SpTransport(websocketUrl) {
     this.onColorFrame = (width, height, data) => {};
     this.onPTDataUpdate = (timestamp, pt_data) => {};
     this.onClearData = (timestamp) => {};
+    this.onInfoUpdate = (text) => {};
      /** @param {Int32Array} buf */
 /*    this.onMapUpdate = (scale_mm, buf) => {}; */
 
@@ -19,7 +22,11 @@ function SpTransport(websocketUrl) {
 /*    this.onFpsUpdate = (fpsupdate) => {}; */
 
     this.onEvent = (message) => {};
+    this.onVPXVideoFrame = () => {};
 }
+
+let totalLen = 0;
+let totalLenPrev = 0;
 
 /** @param {string | object} message - serialize and send over ws */
 SpTransport.prototype.sendMessage = function(message) {
@@ -45,7 +52,8 @@ SpTransport.prototype.handleMessageBinary = (function() {
 
     const FrameFormat = {
         Raw: 0,
-        Jpeg: 1 
+        Jpeg: 1,
+        Vpx: 2
     };
 
     const decoder = new JpegDecoder();
@@ -65,6 +73,7 @@ SpTransport.prototype.handleMessageBinary = (function() {
         let messageType = new Uint8Array(message.data, 0, 1)[0];
         switch (messageType) {
             case MSG_RGB:
+                totalLen += message.data.byteLength;
                 this.lastColorData = message;
                 //console.log("Received RGB data");
                 let dv2 = new DataView(message.data, 0, 16);
@@ -85,6 +94,9 @@ SpTransport.prototype.handleMessageBinary = (function() {
 
                         this.onColorFrame(width2, height2, decodedImageData2);
                     });
+                } else if (format2 === FrameFormat.Vpx) {
+                    console.log('--- received vpx data');
+                    this.onVPXVideoFrame(width2, height2, imageData2);
                 } else {
                     // raw image
                     this.onColorFrame(width2, height2, imageData2);
@@ -104,7 +116,7 @@ SpTransport.prototype.handleMessageString = function(message) {
             let type = (msg.hasOwnProperty('type')) ? msg.type : undefined;
             switch (type) {
                 case "person_tracking":
-                    console.log("Received PT data: ", msg);
+//                    console.log("Received PT data: ", msg);
                     this.onPTDataUpdate(new Date(), msg);
                     break;
                 default:
@@ -146,3 +158,11 @@ SpTransport.prototype.close = function() {
     if (!this._ws) return;
     this._ws.close();
 };
+
+setInterval(function() {
+  let bitrate = (totalLen-totalLenPrev)/1024;
+  console.log('--Bitrate:', bitrate, 'KB');
+  if (transport_inst)
+    transport_inst.onInfoUpdate('Bitrate: '+bitrate+'KB'); 
+  totalLenPrev = totalLen;
+}, 1000);

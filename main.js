@@ -5,121 +5,130 @@
 
 let os = require('os');
 let jpeg = require('jpeg-turbo');
+let vpx = require('node-vpx');
 let express = require('express');
 let app = express();
 let server = require('http').createServer(app);
 let WsServer = require('ws').Server;
 let ptModule = require('node-person');
-let DFRobotHCRProtocol = require('./DFRobotHCRProtocol');
-
+// let DFRobotHCRProtocol = require('./DFRobotHCRProtocol');
+let totalLenPrev = 0;
+let totalLen = 0;
 var blocked = false;
-let hcr = new DFRobotHCRProtocol(function () {
-  console.log("HCR System ready");
+let colorWidth = 640;
+let colorHeight = 480;
+let depthWidth = 628;
+let depthHeight = 468;
+let fps = 30;
+// let hcr = new DFRobotHCRProtocol(function () {
+//   console.log("HCR System ready");
 
-  setTimeout(function loop () {
-    if(blocked)
-    {
-      return;
-    }
+//   setTimeout(function loop () {
+//     if(blocked)
+//     {
+//       return;
+//     }
 
-    var ultraforward = 100000;
-    hcr.requestUltrasonicDistance(function (results) {
-      //console.log('requestUltrasonicDistance: (cm)');
-      //console.log(results);
-      var rightForward  = results[0];
-      var rightBackward = results[1];
-      var backward      = results[2];
-      var leftBackward  = results[3];
-      var leftForward   = results[4];
-      var forward       = results[5];
-      ultraforward = forward;
-   });
+//     var ultraforward = 100000;
+//     hcr.requestUltrasonicDistance(function (results) {
+//       //console.log('requestUltrasonicDistance: (cm)');
+//       //console.log(results);
+//       var rightForward  = results[0];
+//       var rightBackward = results[1];
+//       var backward      = results[2];
+//       var leftBackward  = results[3];
+//       var leftForward   = results[4];
+//       var forward       = results[5];
+//       ultraforward = forward;
+//    });
 
-    hcr.requestInfraredDistance(function (results) {
-      var rightForward  = results[0];
-      var rightBackward = results[1];
-      var leftBackward  = results[2];
-      var leftForward   = results[3];
-      var forward       = results[4];
+//     hcr.requestInfraredDistance(function (results) {
+//       var rightForward  = results[0];
+//       var rightBackward = results[1];
+//       var leftBackward  = results[2];
+//       var leftForward   = results[3];
+//       var forward       = results[4];
 
-      function avoidObstacle(isleft)
-      {
-        var aSpeed = -1;
-        if(isleft)
-        {
-          aSpeed = 1;
-        }
-        console.log('avoidObstacle: set aSpeed: ' + aSpeed);
-        move(0, aSpeed);
-        setTimeout(function () {
-         move(0, 0);
-         setTimeout(function() {
-          let lSpeed = 60;
-           move(lSpeed, 0);
-           console.log('avoidObstacle: set lSpeed: ' + lSpeed);
-           setTimeout(function () {
-             move(0, 0);
-             setTimeout(function() {
-               console.log('avoidObstacle: turn around');
-               let s = 15;
-               hcr.setMotorSpeed(s, -s);
-               blocked = false;
-               console.log('Finish avoiding obstacle!');
-               setTimeout(loop, 500);
-             }, 500);
-           }, 2000);
-         }, 500);
-        }, 1300);
-      }
+//       function avoidObstacle(isleft)
+//       {
+//         var aSpeed = -1;
+//         if(isleft)
+//         {
+//           aSpeed = 1;
+//         }
+//         console.log('avoidObstacle: set aSpeed: ' + aSpeed);
+//         move(0, aSpeed);
+//         setTimeout(function () {
+//          move(0, 0);
+//          setTimeout(function() {
+//           let lSpeed = 60;
+//            move(lSpeed, 0);
+//            console.log('avoidObstacle: set lSpeed: ' + lSpeed);
+//            setTimeout(function () {
+//              move(0, 0);
+//              setTimeout(function() {
+//                console.log('avoidObstacle: turn around');
+//                let s = 15;
+//                hcr.setMotorSpeed(s, -s);
+//                blocked = false;
+//                console.log('Finish avoiding obstacle!');
+//                setTimeout(loop, 500);
+//              }, 500);
+//            }, 2000);
+//          }, 500);
+//         }, 1300);
+//       }
 
-      let forwardMax = 500;
-      let angularMax = 200;
+//       let forwardMax = 500;
+//       let angularMax = 200;
 
-      if((forward <= forwardMax && ultraforward <= forwardMax/10) || rightForward <= angularMax || leftForward <= angularMax)
-      {
-        blocked = true;
-        console.log('Start avoiding obtacle!');
-        brake();
-        setTimeout(function() {
-          avoidObstacle(true);
-          if(rightForward >= angularMax) 
-          {
-            avoidObstacle(false);
-          }
-          else if(leftForward >= angularMax)
-          {
-            avoidObstacle(true);
-          }
-          else
-          {
-            avoidObstacle(true);
-          }
-        }, 1000);
-      }
-    });
+//       if((forward <= forwardMax && ultraforward <= forwardMax/10) || rightForward <= angularMax || leftForward <= angularMax)
+//       {
+//         blocked = true;
+//         console.log('Start avoiding obtacle!');
+//         brake();
+//         setTimeout(function() {
+//           avoidObstacle(true);
+//           if(rightForward >= angularMax) 
+//           {
+//             avoidObstacle(false);
+//           }
+//           else if(leftForward >= angularMax)
+//           {
+//             avoidObstacle(true);
+//           }
+//           else
+//           {
+//             avoidObstacle(true);
+//           }
+//         }, 1000);
+//       }
+//     });
 
-    hcr.requestAntiDrop(function (results) {
-      var isRightForwardTriggered   = results[0];
-      var isRightBackwardTriggered  = results[1];
-      var isLeftBackwardTriggered   = results[2];
-      var isLeftForwardTriggered    = results[3];
-    });
+//     hcr.requestAntiDrop(function (results) {
+//       var isRightForwardTriggered   = results[0];
+//       var isRightBackwardTriggered  = results[1];
+//       var isLeftBackwardTriggered   = results[2];
+//       var isLeftForwardTriggered    = results[3];
+//     });
 
-    hcr.requestBumper(function (results) {
-      var isLeftForwardTriggered    = results[0];
-      var isForwardTriggered        = results[1];
-      var isRightForwardTriggered   = results[2];
-    });
+//     hcr.requestBumper(function (results) {
+//       var isLeftForwardTriggered    = results[0];
+//       var isForwardTriggered        = results[1];
+//       var isRightForwardTriggered   = results[2];
+//     });
 
-    setTimeout(loop, 100);
-  }, 100);
-});
+//     setTimeout(loop, 100);
+//   }, 100);
+// });
 
 let ptConfig = {tracking: {enable: true, trackingMode: 'following'}};
-let cameraConfig = {color: {width: 320, height: 240, frameRate: 30, isEnabled: true},
-                    depth: {width: 320, height: 240, frameRate: 30, isEnabled: true}};
+let cameraConfig = {color: {width: colorWidth, height: colorHeight, frameRate: fps, isEnabled: true},
+                    depth: {width: depthWidth, height: depthHeight, frameRate: fps, isEnabled: true}};
+//let cameraConfig = {color: {width: 320, height: 240, frameRate: 30, isEnabled: true},
+//                    depth: {width: 320, height: 240, frameRate: 30, isEnabled: true}};
 let pt;
-
+let vpxEncoder;
 ptModule.createPersonTracker(ptConfig, cameraConfig).then((instance) => {
   pt = instance;
   console.log('Enabling Tracking with mode set to 0');
@@ -137,6 +146,22 @@ ptModule.createPersonTracker(ptConfig, cameraConfig).then((instance) => {
   });
 
   return pt.start();
+}).then(() => {
+  let encoderOptions = {
+    keyFrameForcedInterval: 10,
+    frameRate: 30,
+    quality: 80
+  };
+  return vpx.createEncoder(encoderOptions);
+}).then((encoder) => {
+  vpxEncoder = encoder;
+  encoder.on('video_data', function(data) {
+    if (true) {
+      let time = new Date();
+      // console.log('encode finish time:', time.getTime(), '--size:', data.length);    
+    }
+    sendVPXData(data);
+  });
 }).catch((error) => {
   console.log('error: ' + error);
 });
@@ -256,21 +281,43 @@ function sendTrackingData(result) {
     sendData(JSON.stringify(resultToDisplay));
   }
 }
+let bitrate = 0;
+setInterval(function() {
+  bitrate = (totalLen-totalLenPrev)/1024;
+  console.log('send bitrate:', bitrate, 'KB');
+  totalLenPrev = totalLen;
+}, 1000);
+let useJpeg = true;
+let useVpx = false;
+let autoSwitchVPX = true;
+let bitrateThreshold = 400;
+let playStarted = false;
+function chooseJpegOrVPX() {
+  if (autoSwitchVPX && bitrate >= bitrateThreshold) {
+    useJpeg = false;
+    useVpx = true;
+  }
+}
 
 function sendRgbFrame(frame) {
   if (!connected) {
     return;
   }
-  let useJpeg = true;
+
   let width = frame.color.width;
   let height = frame.color.height;
   let rawData = frame.color.data;
-
   let imageBuffer;
   let imageBufferLength;
+  chooseJpegOrVPX();
   if (useJpeg) {
     imageBuffer = encodeToJPEG(rawData, width, height);
     imageBufferLength = imageBuffer.byteLength;
+    totalLen += imageBufferLength;
+  } else if (useVpx) {
+    // if (playStarted)
+      vpxEncoder.encode(rawData, width, height);
+    return;
   } else {
     imageBuffer = rawData;
     imageBufferLength = rawData.length;
@@ -309,6 +356,40 @@ function sendRgbFrame(frame) {
   sendData(msg);
 }
 
+function sendVPXData(imageBuffer) {
+  // console.log('sendVPXData, length:', imageBuffer.length);
+  let imageBufferLength = imageBuffer.length;
+  const msgHeaderLength = 16;
+  let msg = new ArrayBuffer(msgHeaderLength + imageBufferLength);
+  let int8View = new Uint8Array(msg);
+  int8View.set(imageBuffer, msgHeaderLength);
+
+  let int16View = new Uint16Array(msg, 0, msgHeaderLength);
+  const MSG_RGB = 3;
+  const FrameFormat = {
+    Raw: 0,
+    Jpeg: 1,
+    Vpx: 2
+  };
+
+  // The schema of the sent message:
+  // |type|format|width|height|padding|time|data|
+  // type: 1 byte, 3 means RGB frame data
+  // format: 1 byte, 0 means raw data with out encoding, 1 means jpeg
+  // width: 2 bytes, width of the frame data
+  // height: 2 bytes, height of the frame data
+  // padding: 2 bytes
+  // time: 8 bytes, time stamp, not used currently.
+  // data: the RGB data.
+  int8View[0] = MSG_RGB;  // type
+  int8View[1] = FrameFormat.Vpx;  // format, jpeg
+  int16View[1] = colorWidth;
+  int16View[2] = colorHeight;
+  int16View[3] = 0;  // padding
+
+  sendData(msg);
+}
+
 let clients = [];
 let connected = false;
 
@@ -317,6 +398,7 @@ function sendData(data) {
     try {
       clients.forEach((client) => {
         client.send(data);
+        // console.log('actually sent data:', data.byteLength);
       });
     } catch (exception) {
       //console.log('Exception: send data failed exception:', exception);
@@ -476,7 +558,11 @@ function startServer() {
       } else {
         let msgObject = JSON.parse(message);
         if (msgObject.type === 'follow') {
+          console.log('--------- follow');
           handleFollowMessage(msgObject.body);
+        } else if (msgObject.type === 'play') {
+          console.log('-------- play started');
+          playStarted = true;
         } else {
           console.log('unkonwn message type: ' + msgObject.type);
         }
@@ -486,17 +572,17 @@ function startServer() {
 }
 
 function brake() {
-  hcr.setMotorSpeed(0,0);
+  // hcr.setMotorSpeed(0,0);
 }
 
 function move(linear, angular) {
-  if (!stopped) {
-    linear *= 100;
-    angular *= 10;
-    const e = 105; // half distance between left and right wheel
-    const r = 67.5; // radius of the wheel
-    var leftSpeed = linear - (angular * e)/r;
-    var rightSpeed = linear + (angular * e)/r;
-    hcr.setMotorSpeed(leftSpeed, rightSpeed);
-  }
+  // if (!stopped) {
+  //   linear *= 100;
+  //   angular *= 10;
+  //   const e = 105; // half distance between left and right wheel
+  //   const r = 67.5; // radius of the wheel
+  //   var leftSpeed = linear - (angular * e)/r;
+  //   var rightSpeed = linear + (angular * e)/r;
+  //   hcr.setMotorSpeed(leftSpeed, rightSpeed);
+  // }
 }
